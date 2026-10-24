@@ -1,0 +1,2014 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ことばパズル かたかな</title>
+ <meta property="og:title" content="ことばパズル かたかな">
+    <meta property="og:description" content="文字カード（平仮名/片仮名）を組み合わせて、意味に合う言葉を作るゲームです。">
+    <meta property="og:type" content="website">
+<style>
+  * { 
+    box-sizing: border-box; 
+    margin: 0; 
+    padding: 0; 
+    user-select: none; 
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent; 
+  }
+  body {
+    background-color: #fefce8;
+    color: #1e293b;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    font-family: 'Hiragino Maru Gothic ProN', 'Rounded Mplus 1c', 'Meiryo', sans-serif;
+    overflow: hidden;
+    touch-action: manipulation;
+  }
+
+  /* 16:9 アスペクト比固定 メインコンテナ */
+  #game-container {
+    position: relative;
+    width: 96vw;
+    height: 54vw;
+    max-width: 1200px;
+    max-height: 675px;
+    background: #fef08a;
+    border-radius: 22px;
+    box-shadow: 0 12px 30px rgba(234, 179, 8, 0.3), 0 0 0 6px #fde047;
+    border: 4px solid #ffffff;
+    overflow: hidden;
+  }
+
+  #track-container {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    pointer-events: none;
+  }
+
+  .track-tile {
+    position: absolute;
+    width: clamp(26px, 3.2vw, 36px);
+    height: clamp(26px, 3.2vw, 36px);
+    background: #ffffff;
+    border: 2px solid #facc15;
+    border-radius: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: clamp(9px, 1.1vw, 12px);
+    font-weight: bold;
+    color: #854d0e;
+    transition: background-color 0.3s, border-color 0.3s, box-shadow 0.3s, color 0.3s;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transform: translate(-50%, -50%);
+  }
+
+  @keyframes tilePop {
+    0% { transform: translate(-50%, -50%) scale(1); }
+    50% { transform: translate(-50%, -50%) scale(1.4); box-shadow: 0 0 18px rgba(74, 222, 128, 0.9); z-index: 30; }
+    100% { transform: translate(-50%, -50%) scale(1); }
+  }
+  .tile-pop { animation: tilePop 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+
+  .track-tile.active-green {
+    background: #4ade80;
+    border-color: #16a34a;
+    color: #052e16;
+    box-shadow: 0 0 10px rgba(74, 222, 128, 0.7);
+  }
+  .track-tile.active-yellow {
+    background: #fbbf24;
+    border-color: #d97706;
+    color: #78350f;
+    box-shadow: 0 0 14px rgba(251, 191, 36, 0.9);
+  }
+  .track-tile.active-orbit {
+    background: #38bdf8 !important;
+    border-color: #0284c7 !important;
+    color: #ffffff !important;
+    box-shadow: 0 0 18px rgba(56, 189, 248, 1) !important;
+    transform: translate(-50%, -50%) scale(1.3) !important;
+    z-index: 25;
+  }
+  .track-tile.start-tile {
+    background: #38bdf8;
+    border-color: #0284c7;
+    color: #ffffff;
+    font-size: clamp(8px, 1vw, 10px);
+  }
+  .track-tile.goal-tile {
+    background: #f87171;
+    border-color: #dc2626;
+    color: #ffffff;
+    font-size: clamp(8px, 1vw, 10px);
+    animation: pulse-goal 1.5s infinite;
+  }
+
+  @keyframes pulse-goal {
+    0%, 100% { transform: translate(-50%, -50%) scale(1); }
+    50% { transform: translate(-50%, -50%) scale(1.12); }
+  }
+
+  #main-content {
+    position: absolute;
+    top: clamp(38px, 8.2%, 60px);
+    left: clamp(38px, 8.2%, 60px);
+    right: clamp(38px, 8.2%, 60px);
+    bottom: clamp(38px, 8.2%, 60px);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    padding: clamp(6px, 1.2vw, 12px) clamp(10px, 1.8vw, 18px);
+    background: #ffffff;
+    border-radius: 18px;
+    border: 2px solid #fde047;
+    box-shadow: inset 0 0 10px rgba(250, 204, 21, 0.1);
+  }
+
+  #header {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: clamp(4px, 1vw, 12px);
+  }
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: clamp(4px, 0.8vw, 10px);
+    flex-shrink: 0;
+  }
+  .stat-box {
+    font-size: clamp(11px, 1.3vw, 15px);
+    font-weight: 800;
+    background: #fefce8;
+    border: 2px solid #fde047;
+    padding: 4px clamp(8px, 1.2vw, 14px);
+    border-radius: 20px;
+    color: #713f12;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: transform 0.15s;
+  }
+  #stage-display { color: #d97706; }
+  #mode-display { color: #2563eb; background: #eff6ff; border-color: #bfdbfe; }
+  #points-display { color: #b45309; background: #fffbe6; border-color: #fde68a; }
+  #points-display.rolling {
+    transform: scale(1.1);
+    background: #fef3c7;
+    border-color: #f59e0b;
+    color: #b45309;
+  }
+  #timer-display { color: #b45309; font-size: clamp(12px, 1.4vw, 16px); background: #fffbe6; border-color: #fde68a; }
+
+  .sound-btn {
+    cursor: pointer;
+    font-size: clamp(10px, 1.1vw, 13px);
+    font-weight: bold;
+    background: #ffffff;
+    border: 2px solid #fde047;
+    color: #713f12;
+    padding: 4px clamp(6px, 1vw, 12px);
+    border-radius: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+  }
+
+  #workspace {
+    width: 100%;
+    flex: 1;
+    display: flex;
+    gap: clamp(8px, 1.5vw, 16px);
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 4px;
+    overflow: hidden;
+  }
+
+  #idiom-list {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: clamp(4px, 1vw, 10px);
+    justify-content: center;
+    height: 100%;
+    min-width: 0;
+  }
+  .idiom-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #fefce8;
+    border: 2px solid #fef08a;
+    border-radius: 12px;
+    padding: clamp(4px, 0.8vw, 8px) clamp(6px, 1.2vw, 14px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+  }
+  .meaning-text {
+    flex: 1;
+    color: #451a03;
+    font-size: clamp(12px, 1.3vw, 15px);
+    font-weight: 700;
+    padding-right: 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .slots-container {
+    display: flex;
+    gap: clamp(4px, 0.8vw, 8px);
+    position: relative;
+    padding: 3px 0;
+    align-items: center;
+    flex-shrink: 0;
+  }
+
+  .drop-slot {
+    width: clamp(32px, 3.8vw, 46px);
+    height: clamp(32px, 3.8vw, 46px);
+    border: 2px dashed #facc15;
+    border-radius: 10px;
+    background: #ffffff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    position: relative;
+    flex-shrink: 0;
+  }
+  .drop-slot.filled {
+    border-style: solid;
+    border-color: #4ade80;
+    background: #f0fdf4;
+    box-shadow: 0 0 6px rgba(74, 222, 128, 0.4);
+  }
+
+  .hint-text {
+    position: absolute;
+    color: #fde047;
+    font-size: clamp(16px, 2vw, 22px);
+    font-weight: bold;
+    pointer-events: none;
+  }
+
+  .hint-btn {
+    width: clamp(28px, 3vw, 36px);
+    height: clamp(28px, 3vw, 36px);
+    border-radius: 10px;
+    background: #fef3c7;
+    border: 2px solid #fde68a;
+    color: #d97706;
+    font-size: clamp(9px, 1vw, 11px);
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-left: 4px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  }
+  .hint-btn.used {
+    background: #f1f5f9;
+    border-color: #e2e8f0;
+    color: #94a3b8;
+  }
+
+  #card-pool-container {
+    width: clamp(160px, 22vw, 240px);
+    height: 100%;
+    max-height: 380px;
+    background: #fefce8;
+    border: 2px dashed #facc15;
+    border-radius: 14px;
+    padding: clamp(6px, 1vw, 10px);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+
+  .pool-title {
+    font-size: clamp(10px, 1vw, 12px);
+    font-weight: 800;
+    color: #854d0e;
+    text-align: center;
+  }
+
+  #card-pool {
+    flex: 1;
+    display: flex;
+    flex-wrap: wrap;
+    align-content: center;
+    justify-content: center;
+    gap: clamp(4px, 0.8vw, 8px);
+    overflow-y: auto;
+  }
+
+  .pool-slot {
+    width: clamp(30px, 3.5vw, 42px);
+    height: clamp(30px, 3.5vw, 42px);
+    border: 1px dashed #fde047;
+    border-radius: 10px;
+    background: #ffffff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-shrink: 0;
+  }
+
+  .kanji-card {
+    width: clamp(30px, 3.5vw, 42px);
+    height: clamp(30px, 3.5vw, 42px);
+    background: linear-gradient(135deg, #ffffff, #fef9c3);
+    color: #713f12;
+    font-size: clamp(16px, 2.2vw, 24px);
+    font-weight: 900;
+    border: 2px solid #facc15;
+    border-radius: 10px;
+    box-shadow: 0 3px 6px rgba(234, 179, 8, 0.2);
+    cursor: grab;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    touch-action: none;
+    transition: transform 0.15s;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 2;
+  }
+  .kanji-card.selected {
+    transform: scale(1.1);
+    outline: 3px solid #3b82f6;
+  }
+  .kanji-card.correct {
+    background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+    color: #15803d;
+    border-color: #86efac;
+    cursor: default;
+  }
+
+  /* モーダル関連 */
+  .modal-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(113, 63, 18, 0.6);
+    backdrop-filter: blur(4px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 100;
+    animation: fadeIn 0.3s ease-out;
+  }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+  .modal-card {
+    background: #ffffff;
+    border: 3px solid #fde047;
+    color: #713f12;
+    padding: 24px 32px;
+    border-radius: 20px;
+    text-align: center;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+    max-width: 440px;
+    width: 88%;
+  }
+  .modal-card h2 { font-size: 26px; margin-bottom: 12px; color: #ef4444; }
+  .modal-card h2.win { color: #10b981; }
+
+  .stage-clear-banner {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: #ffffff;
+    padding: 24px 32px;
+    border-radius: 20px;
+    box-shadow: 0 15px 30px rgba(16, 185, 129, 0.3);
+    text-align: center;
+    animation: bounceIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+
+  .start-hero-card {
+    background: linear-gradient(135deg, #fef08a 0%, #fde047 100%);
+    border: 4px solid #ffffff;
+    color: #713f12;
+    padding: 28px 24px;
+    border-radius: 28px;
+    text-align: center;
+    box-shadow: 0 20px 50px rgba(234, 179, 8, 0.4);
+    max-width: 460px;
+    width: 90%;
+  }
+  .start-hero-title {
+    font-size: clamp(28px, 4.2vw, 38px);
+    font-weight: 900;
+    color: #ea580c;
+    margin-bottom: 8px;
+    text-shadow: 2px 2px 0 #ffffff;
+  }
+  .start-play-btn {
+    background: linear-gradient(135deg, #f97316, #ea580c);
+    color: #ffffff;
+    font-size: 18px;
+    font-weight: 900;
+    padding: 12px 40px;
+    border: none;
+    border-radius: 30px;
+    cursor: pointer;
+    box-shadow: 0 8px 20px rgba(234, 88, 12, 0.4);
+    transition: transform 0.15s;
+  }
+
+  /* ゴールボーナス */
+  .bonus-banner {
+    background: linear-gradient(135deg, #f59e0b, #d97706, #b45309);
+    border: 3px solid #fef08a;
+    color: #ffffff;
+    padding: 28px 36px;
+    border-radius: 24px;
+    box-shadow: 0 0 50px rgba(245, 158, 11, 0.8);
+    text-align: center;
+    max-width: 480px;
+    width: 90%;
+  }
+  .bonus-amount {
+    font-size: clamp(36px, 5vw, 52px);
+    font-weight: 900;
+    color: #fef08a;
+  }
+
+  /* 特別ボーナスステージ */
+  .special-stage-container {
+    background: #fefce8;
+    border: 4px solid #fde047;
+    border-radius: 20px;
+    padding: 16px;
+    width: 94%;
+    max-width: 860px;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+  .special-header {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: #713f12;
+    border-bottom: 2px dashed #fde047;
+    padding-bottom: 8px;
+  }
+  .special-title { font-size: clamp(16px, 2.2vw, 22px); font-weight: 900; color: #ea580c; }
+  
+  .special-grid-8x8 {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 6px;
+    width: 100%;
+    max-width: 520px;
+    aspect-ratio: 1;
+  }
+  .special-panel {
+    background: #ffffff;
+    border: 2px solid #facc15;
+    border-radius: 8px;
+    color: #713f12;
+    font-size: clamp(14px, 2vw, 20px);
+    font-weight: 900;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  }
+  .special-panel.hit {
+    background: #4ade80 !important;
+    border-color: #16a34a !important;
+    color: #ffffff !important;
+  }
+  .special-panel.miss {
+    background: #f87171 !important;
+    border-color: #dc2626 !important;
+  }
+
+  .gojyuon-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    padding: 20px;
+  }
+  .gojyuon-card {
+    width: 52px; height: 52px;
+    background: #ffffff;
+    border: 3px solid #38bdf8;
+    border-radius: 12px;
+    font-size: 24px;
+    font-weight: 900;
+    color: #0369a1;
+    display: flex; justify-content: center; align-items: center;
+    cursor: pointer;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  }
+  .gojyuon-card.cleared { opacity: 0.2; pointer-events: none; }
+
+  /* ステージズーム */
+  #stage-zoom-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(254, 240, 138, 0.92);
+    display: flex; justify-content: center; align-items: center;
+    z-index: 200; opacity: 0; pointer-events: none; transition: opacity 0.2s;
+  }
+  #stage-zoom-overlay.show { opacity: 1; pointer-events: auto; }
+  .stage-zoom-text {
+    font-size: clamp(32px, 7vw, 72px); font-weight: 900; color: #ea580c;
+    text-shadow: 3px 3px 0 #ffffff;
+  }
+
+  .modal-btns { display: flex; gap: 12px; justify-content: center; }
+  .btn {
+    padding: 10px 22px; font-size: 14px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer;
+  }
+  .btn-retry { background: #10b981; color: #fff; }
+  .btn-quit { background: #64748b; color: #fff; }
+  .btn-next { background: #3b82f6; color: #fff; }
+
+  #confetti-canvas {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    pointer-events: none; z-index: 90;
+  }
+</style>
+</head>
+<body>
+
+<div id="game-container">
+  <canvas id="confetti-canvas"></canvas>
+  <div id="track-container"></div>
+
+  <div id="stage-zoom-overlay">
+    <div id="stage-zoom-text" class="stage-zoom-text">ステージ 1</div>
+  </div>
+
+  <div id="main-content">
+    <div id="header">
+      <div class="header-left">
+        <div class="stat-box" id="stage-display">🚩 ステージ 1</div>
+        <div class="stat-box" id="mode-display">【カタカナ】</div>
+        <div class="stat-box" id="points-display">⭐ 0 pt</div>
+      </div>
+      <div class="stat-box" id="timer-display">⏱ 4:00</div>
+      <button class="sound-btn" id="sound-btn" onclick="toggleSound()">🔊 ON</button>
+    </div>
+
+    <div id="workspace">
+      <div id="idiom-list"></div>
+      <div id="card-pool-container">
+        <div class="pool-title">ゆびで なぞって うごかそう）</div>
+        <div id="card-pool" ondragover="allowDrop(event)" ondrop="dropToPool(event)"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('contextmenu', e => e.preventDefault());
+document.addEventListener('touchstart', e => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
+
+/* ひらがな データベース（ひらがな・カタカナ・数字のみ） */
+const KATAKANA_DATABASE = [
+  { word: "パン", meaning: "こむぎこを こねて やいた たべもの" },
+  { word: "バナナ", meaning: "きいろくて かわを むいて たべる くだもの" },
+  { word: "トマト", meaning: "あかくて まるい やさい" },
+  { word: "バス", meaning: "たくさんの ひとを のせて はしる おおきな くるま" },
+  { word: "テレビ", meaning: "ニュースや アニメが うつる はこ" },
+  { word: "カメラ", meaning: "しゃしんを とる どうぐ" },
+  { word: "ラジオ", meaning: "こえや おんがくだけが きこえる どうぐ" },
+  { word: "ドア", meaning: "へやの いりぐちに ある とびら" },
+  { word: "ベッド", meaning: "ねる ための ふかふかした かぐ" },
+  { word: "コップ", meaning: "みずや コーヒーを いれて のむ いれもの" },
+  { word: "スプーン", meaning: "スープや カレーを すくって たべる どうぐ" },
+  { word: "フォーク", meaning: "さきが われていて たべものを さして たべる どうぐ" },
+  { word: "ナイフ", meaning: "ハンバーグや おにくを きる どうぐ" },
+  { word: "ケーキ", meaning: "スポンジに クリームや フルーツが のった おかし" },
+  { word: "アイス", meaning: "つめたくて あまい こおった おかし" },
+  { word: "クッキー", meaning: "サクサクの やいた あまい おかし" },
+  { word: "プリン", meaning: "ぷるぷるゆれる カラメルソースの あまい おかし" },
+  { word: "ゼリー", meaning: "プルプルしていて つめたい くだものあじのおかし" },
+  { word: "ジュース", meaning: "くだものの あじがする あまい のみもの" },
+  { word: "スープ", meaning: "スプーンで のむ あたたかい しるもの" },
+  { word: "ピザ", meaning: "まるい きじに チーズや トマトを のせて やいた たべもの" },
+  { word: "ミルク", meaning: "うしから しぼった しろい のみもの" },
+  { word: "ライオン", meaning: "たてがみが ある ひゃくじゅうの おうさま" },
+  { word: "パンダ", meaning: "しろと くろの ささを たべる どうぶつ" },
+  { word: "コアラ", meaning: "ユーカリの きに のぼって ねている どうぶつ" },
+  { word: "ゴリラ", meaning: "むねを ポンポン たたく ちからの つよい どうぶつ" },
+  { word: "ペンギン", meaning: "そらを とべない こおりの うえを あるく とり" },
+  { word: "カンガルー", meaning: "おなかの ポケットに あかちゃんを いれる どうぶつ" },
+  { word: "フラミンゴ", meaning: "ピンクいろで いっぽんあしで たつ とり" },
+  { word: "クジラ", meaning: "うみの なかで いちばん おおきな いきもの" },
+  { word: "ラッコ", meaning: "あおむけに うかんで かいを わる いきもの" },
+  { word: "サメ", meaning: "するどい はを もつ うみの いきもの" },
+  { word: "ハムスター", meaning: "ひまわりの タネが すきな ちいさい どうぶつ" },
+  { word: "トラック", meaning: "にもつを たくさん のせて はしる おおきな くるま" },
+  { word: "タクシー", meaning: "おかねを はらって いきたい ところまで はしる くるま" },
+  { word: "パトカー", meaning: "けいさつかんが のって まちを まもる くるま" },
+  { word: "ロケット", meaning: "うちゅうに むかって とびたつ のりもの" },
+  { word: "ヘリコプター", meaning: "プロペラを まわして そらを とぶ のりもの" },
+  { word: "ヨット", meaning: "かぜの ちからで うみの うえを すすむ ふね" },
+  { word: "ノート", meaning: "えんぴつで もじや かずを かきこむ ほん" },
+  { word: "クレヨン", meaning: "カラフルな いろで えを ぬる ぶんぼうぐ" },
+  { word: "バッグ", meaning: "ものを いれて もちはこぶ ふくろ" },
+  { word: "タオル", meaning: "からだや ての みずを ふく ぬの" },
+  { word: "シャツ", meaning: "からだの うえに きる そでの ある ふく" },
+  { word: "ズボン", meaning: "あしを いれて はく ふく" },
+  { word: "コート", meaning: "さむい ひに ふくの うえから はおる もの" },
+  { word: "ブーツ", meaning: "あしもとを あたたかくする ながい くつ" },
+  { word: "ハンカチ", meaning: "てを あらった あとに つかう ちいさな ぬの" },
+  { word: "ティッシュ", meaning: "はなを かんだり よごれを ふく やわらかい かみ" },
+  { word: "サッカー", meaning: "あしで ボールを けって ゴールを ねらう スポーツ" },
+  { word: "ダンス", meaning: "おんがくに あわせて からだを うごかす おどり" },
+  { word: "ゲーム", meaning: "ルールを まもって たのしく あそぶ こと" },
+  { word: "トランプ", meaning: "すうじや マークがついた カードあそび" },
+  { word: "ピアノ", meaning: "くろと しろの けんばんを おして おとを だす がっき" },
+  { word: "ブランコ", meaning: "こうえんに ある まえうしろに ゆれる ゆうぐ" },
+  { word: "シーソー", meaning: "ふたりで のって うえしたに ゆれる ゆうぐ" },
+  { word: "ライト", meaning: "ピカッと くらやみを てらす あかり" },
+  { word: "テーブル", meaning: "ごはんを たべたり ものを おく だい" },
+  { word: "ソファー", meaning: "ゆったり すわれる ふかふかの いす" },
+  { word: "シャワー", meaning: "あなから みずが でる からだを あらう どうぐ" },
+  { word: "トイレ", meaning: "おしっこや うんちを する ところ" },
+  { word: "オレンジ", meaning: "だいだいいろの くだもの" },
+  { word: "メロン", meaning: "あまくて あみめのある くだもの" },
+  { word: "キャベツ", meaning: "まるい はっぱが なんまいも まいている やさい" },
+  { word: "レタス", meaning: "シャキシャキした サラダに つかう やさい" },
+  { word: "ピーマン", meaning: "みどりいろで すこし にがい やさい" },
+  { word: "オニオン", meaning: "たまねぎ のこと" },
+  { word: "ポテト", meaning: "じゃがいも のこと" },
+  { word: "レモン", meaning: "すっぱくて きいろい くだもの" },
+  { word: "ハンバーグ", meaning: "おにくを こねて やいた たべもの" },
+  { word: "コロッケ", meaning: "つぶした じゃがいもなどを パンこで あげた たべもの" },
+  { word: "グラタン", meaning: "ホワイトソースと チーズを オーブンで やいた たべもの" },
+  { word: "ソーセージ", meaning: "おにくが つまった パキッとはじける たべもの" },
+  { word: "ハム", meaning: "うすく スライスした おにくの たべもの" },
+  { word: "サラダ", meaning: "やさいを ドレッシングで あえた たべもの" },
+  { word: "ドーナツ", meaning: "まんなかに あなが あいた おかし" },
+  { word: "ダチョウ", meaning: "そらは とべないけれど はしるのが はやい とり" },
+  { word: "クラゲ", meaning: "うみで ぷかぷか ただよう とうめいな いきもの" },
+  { word: "フェリー", meaning: "くるまや ひとを のせて うみを わたる おおきな ふね" },
+  { word: "ホッチキス", meaning: "かみを はりで パチンと とめる ぶんぼうぐ" },
+  { word: "セロテープ", meaning: "ペタッと はれる とうめいな テープ" },
+  { word: "ドッジボール", meaning: "ボールを あてたり にげたりする あそび" },
+  { word: "プール", meaning: "みずを ためて およぐ ばしょ" },
+  { word: "パソコン", meaning: "キーボードで もじを うって べんきょうをする どうぐ" },
+  { word: "マスク", meaning: "くちや はなを おおって かぜを よぼうする ぬの" },
+  { word: "タオル", meaning: "てや からだを ふく ふかふかの ぬの" },
+  { word: "ブラシ", meaning: "かみを とかしたり よごれを おとしたり する どうぐ" },
+  { word: "リモコン", meaning: "はなれた ばしょから テレビを そうさする どうぐ" },
+  { word: "ポスター", meaning: "かべに はる おおきな しゃしんや え" },
+  { word: "シール", meaning: "ペタッと はれる ちいさな かみ" },
+  { word: "スタンプ", meaning: "インクを つけて ぽんとおす はんこ" },
+  { word: "カレンダー", meaning: "つきや ひにちが かいてある かみ" },
+  { word: "ポケット", meaning: "ふくや かばんについている ものを いれる ばしょ" },
+  { word: "ボタン", meaning: "ふくを とめたり でんきを つけたりする つまみ" },
+  { word: "リボン", meaning: "プレゼントや かみのけに むすぶ きれいな ひも" },
+  { word: "ベルト", meaning: "ズボンが おちないように こしに まく ひも" },
+  { word: "マフラー", meaning: "ふゆに くびに まく あたたかい ぬの" },
+  { word: "パジャマ", meaning: "よる ねるときに きる ふく" },
+  { word: "サンダル", meaning: "なつに あしにはく すずしい くつ" },
+  { word: "スリッパ", meaning: "いえの なかではく かるい くつ" },
+  { word: "サングラス", meaning: "まぶしい ひかりから めを まもる めがね" },
+  { word: "シャンプー", meaning: "あたまを あらう あわあわの えき" },
+  { word: "リンス", meaning: "シャンプーの あとに かみを さらさらにする えき" },
+  { word: "ドライヤー", meaning: "あたたかい かぜで かみを かわかす どうぐ" },
+  { word: "ストロー", meaning: "ジュースを のむ ための ほそい くだ" },
+  { word: "ポット", meaning: "おゆを あたたかいまま たもつ いれもの" },
+  { word: "フライパン", meaning: "おにくや たまごを やく てつの どうぐ" },
+  { word: "レンジ", meaning: "たべものを チンして あたたかくする どうぐ" },
+  { word: "マシュマロ", meaning: "ふわふわして あまい しろい おかし" },
+  { word: "ガム", meaning: "クチャクチャ かんで あじを たのしむ おかし" },
+  { word: "クレープ", meaning: "うすい きじに フルーツや クリームを まいた おかし" },
+  { word: "パフェ", meaning: "フルーツや アイスが たくさん のった ごちそう" },
+  { word: "フルーツ", meaning: "くだもの のこと" },
+  { word: "ビル", meaning: "いくつも かいがある たかい たてもの" },
+  { word: "エレベーター", meaning: "ひとや にもつを のせて うえしたに うごく きかい" },
+  { word: "エスカレーター", meaning: "のりながら うえしたに いどうする かいだん" },
+  { word: "レストラン", meaning: "りょうりを たべられる みせ" },
+  { word: "ホテル", meaning: "りょこうなどで とまる たてもの" },
+  { word: "キャンプ", meaning: "やまや もりなどで そとに とまって すごすこと" },
+  { word: "テント", meaning: "そとで とまるときに つかう おおきな ぬのの いえ" },
+  { word: "バーベキュー", meaning: "そとで にくや やさいを やいて たべること" },
+  { word: "ハイキング", meaning: "しぜんの なかを あるいて たのしむこと" },
+  { word: "ピクニック", meaning: "そとに でかけて おべんとうを たべたり あそんだりすること" },
+  { word: "スキー", meaning: "いたを はいて ゆきの うえを すべる スポーツ" },
+  { word: "スケート", meaning: "こおりの うえを すべる スポーツ" },
+  { word: "チーム", meaning: "いっしょに ちからを あわせる なかま" },
+  { word: "コーチ", meaning: "スポーツの やりかたを おしえる ひと" },
+  { word: "メダル", meaning: "よい せいせきを おさめた ひとが もらうもの" },
+  { word: "トロフィー", meaning: "たいかいで ゆうしょうした ひとが もらうもの" },
+  { word: "スタジアム", meaning: "おおぜいの ひとが スポーツを みたり したりする ところ" },
+  { word: "グラウンド", meaning: "やきゅうや サッカーなどを する ひろい ばしょ" },
+  { word: "ボール", meaning: "なげたり けったり うったりして あそぶ まるい どうぐ" },
+  { word: "ゴール", meaning: "ボールを いれたり はしって たどりついたりする ところ" },
+  { word: "キック", meaning: "あしで ボールなどを けること" },
+  { word: "パス", meaning: "なかまに ボールなどを わたすこと" },
+  { word: "シュート", meaning: "ボールを ゴールに むかって けったり なげたりすること" },
+  { word: "マイク", meaning: "こえや おとを おおきくする てに もつ どうぐ" },
+  { word: "スピーカー", meaning: "おとや こえを おおきく だす どうぐ" },
+  { word: "カラオケ", meaning: "おんがくに あわせて うたう あそび" },
+  { word: "コンサート", meaning: "うたったり えんそうしたりする えんそうかい" },
+  { word: "ステージ", meaning: "うたや おどりを みんなに みせる たかい ばしょ" },
+  { word: "チケット", meaning: "えいがや でんしゃなどを つかうときに ひつような きっぷ" },
+  { word: "アルバム", meaning: "しゃしんや おもいでを まとめて のこす ほん" },
+  { word: "メモ", meaning: "わすれないように かいておく みじかい ぶん" },
+  { word: "ペン", meaning: "もじや えを かく どうぐ" },
+  { word: "クリップ", meaning: "かみなどを はさんで まとめる どうぐ" },
+  { word: "カード", meaning: "もじや えなどが かいてある ちいさな かみ" },
+  { word: "パズル", meaning: "ピースを あわせて えや かたちを つくる あそび" },
+  { word: "クイズ", meaning: "もんだいに こたえて たのしむ あそび" },
+  { word: "マジック", meaning: "ふしぎな ことが おきたように みせる げい" },
+  { word: "ロボット", meaning: "ひとの かわりに しごとを したり うごいたりする きかい" },
+  { word: "タブレット", meaning: "ゆびで さわって そうさする うすい きかい" },
+  { word: "キーボード", meaning: "ボタンを おして もじを にゅうりょくする どうぐ" },
+  { word: "レコード", meaning: "おんがくを きろくした まるい いた" },
+  { word: "ビデオ", meaning: "うごく えと おとを きろくしたり みたりするもの" },
+  { word: "ヒーロー", meaning: "こまっている ひとを たすける つよい ひと" },
+  { word: "モンスター", meaning: "こわい すがたを した ふしぎな いきもの" },
+  { word: "ドラゴン", meaning: "つばさや つめを もつ りゅうの いきもの" },
+  { word: "プリンセス", meaning: "おうさまの むすめの こと" },
+  { word: "エイリアン", meaning: "ちきゅうでは ない ほしに すんでいる いきもの" },
+  { word: "カプセル", meaning: "くすりなどを いれる ちいさな いれもの" },
+  { word: "エネルギー", meaning: "ものを うごかしたり はたらかせたりする ちから" },
+  { word: "エンジン", meaning: "くるまなどを うごかすための きかい" },
+  { word: "タイヤ", meaning: "くるまや じてんしゃの まわる わの ぶぶん" },
+  { word: "ハンドル", meaning: "くるまの すすむ むきを かえる どうぐ" },
+  { word: "ブレーキ", meaning: "くるまを とめるための しくみ" },
+  { word: "ペダル", meaning: "あしで ふんで うごかす ぶぶん" },
+  { word: "バイク", meaning: "エンジンで はしる ２りんの のりもの" },
+  { word: "ボート", meaning: "みずの うえを すすむ ちいさな ふね" },
+  { word: "ヘルメット", meaning: "あたまを まもるために かぶる もの" },
+  { word: "ジャケット", meaning: "うわぎとして きる ふく" },
+  { word: "セーター", meaning: "あたたかくするために きる あみものの ふく" },
+  { word: "ネクタイ", meaning: "くびに まいて まえに たらす ふくの かざり" },
+  { word: "シューズ", meaning: "あしに はく くつ" },
+  { word: "ソックス", meaning: "あしに はく くつした" },
+  { word: "ファスナー", meaning: "ふくや かばんの くちを しめる どうぐ" },
+  { word: "エプロン", meaning: "ふくが よごれないように まえに つける もの" },
+  { word: "ミトン", meaning: "ゆびが いっしょに はいる てぶくろ" },
+  { word: "キッチン", meaning: "りょうりを する ところ" },
+  { word: "ボウル", meaning: "まぜたり あえたりするときに つかう うつわ" },
+  { word: "トング", meaning: "たべものなどを はさんで つかむ どうぐ" },
+  { word: "ミキサー", meaning: "くだものなどを こまかく まぜる きかい" },
+  { word: "トースター", meaning: "パンを やく きかい" },
+  { word: "オーブン", meaning: "なかに いれた りょうりを あつくして やく きかい" },
+  { word: "グラス", meaning: "みずや のみものを いれて のむ うつわ" },
+  { word: "ラップ", meaning: "たべものを かわかないようにする うすい まく" },
+  { word: "アルミホイル", meaning: "りょうりを つつつむ うすい きんぞくの かみ" },
+  { word: "ケチャップ", meaning: "トマトなどから つくる あまくて すっぱい ちょうみりょう" },
+  { word: "マヨネーズ", meaning: "たまごや あぶらなどから つくる しろい ちょうみりょう" },
+  { word: "ジャム", meaning: "くだものを にて あまくした パンに ぬる たべもの" },
+  { word: "ヨーグルト", meaning: "ぎゅうにゅうから つくる すっぱい たべもの" },
+  { word: "ハンバーガー", meaning: "パンに にくや やさいなどを はさんだ たべもの" },
+  { word: "ホットドッグ", meaning: "ながい パンに ソーセージを はさんだ たべもの" },
+  { word: "オムライス", meaning: "ケチャップライスを たまごで つつんだ りょうり" },
+  { word: "ステーキ", meaning: "にくを あつく きって やいた りょうり" },
+  { word: "アーモンド", meaning: "きの みの なかにある たねを たべる もの" },
+  { word: "レーズン", meaning: "ブドウを ほして ちいさくした たべもの" },
+  { word: "ココア", meaning: "カカオまめから つくる あまくて あたたかい のみもの" }
+];
+
+
+ 
+const WORD_SEARCH_THEMES = [
+  { theme: "どうぶつ", words: ["ぞう", "きりん", "うさぎ", "らいおん", "ねこ", "いぬ"] },
+  { theme: "たべもの", words: ["りんご", "バナナ", "パン", "トマト", "いちご", "みかん"] },
+  { theme: "のりもの", words: ["バス", "でんしゃ", "ふね", "ひこうき", "タクシー", "トラック"] }
+];
+
+let currentPosition = 0;
+let currentStage = 1;
+let totalPoints = 0;
+let nextSpecialStageMilestone = 500;
+let goalSequenceActive = false; // 完走演出・ゴール画面中は特別ボーナスを待機させる
+let timer = 240;
+let timerInterval = null;
+let soundEnabled = true;
+
+let isKatakanaMode = false;
+let currentIdioms = [];
+// ひらがな・カタカナそれぞれ、候補の言葉が一巡するまで重複しない「出題袋」方式
+let hiraganaQuestionQueue = [];
+let katakanaQuestionQueue = [];
+let usedHintsInStage = [false, false, false, false, false];
+let selectedCard = null;
+let audioCtx = null;
+let trackCoords = [];
+
+let draggedCard = null;
+let touchClone = null;
+let touchStartX = 0;
+let touchStartY = 0;
+
+function initTrack() {
+  const container = document.getElementById('game-container');
+  const trackContainer = document.getElementById('track-container');
+  trackContainer.innerHTML = '';
+  trackCoords = [];
+
+  const rect = container.getBoundingClientRect();
+  const containerW = rect.width || 1200;
+  const containerH = rect.height || 675;
+
+  const marginX = 26;
+  const marginY = 26;
+
+  const trackW = containerW - marginX * 2;
+  const trackH = containerH - marginY * 2;
+
+  const totalPerimeter = 2 * (trackW + trackH);
+  const totalTiles = 51;
+  const step = totalPerimeter / totalTiles;
+
+  const xStart = trackW * 0.52;
+
+  for (let i = 0; i < totalTiles; i++) {
+    const dist = i * step;
+    let x, y;
+
+    if (dist <= trackW - xStart) {
+      x = xStart + dist;
+      y = trackH;
+    } else if (dist <= (trackW - xStart) + trackH) {
+      const d = dist - (trackW - xStart);
+      x = trackW;
+      y = trackH - d;
+    } else if (dist <= (trackW - xStart) + trackH + trackW) {
+      const d = dist - ((trackW - xStart) + trackH);
+      x = trackW - d;
+      y = 0;
+    } else if (dist <= (trackW - xStart) + 2 * trackH + trackW) {
+      const d = dist - ((trackW - xStart) + trackH + trackW);
+      x = 0;
+      y = d;
+    } else {
+      const d = dist - ((trackW - xStart) + 2 * trackH + trackW);
+      x = d;
+      y = trackH;
+    }
+
+    const pctX = ((x + marginX) / containerW) * 100;
+    const pctY = ((y + marginY) / containerH) * 100;
+
+    trackCoords.push({ x: pctX, y: pctY });
+
+    const tile = document.createElement('div');
+    tile.className = 'track-tile';
+    tile.id = `tile-${i}`;
+    tile.style.left = `${pctX}%`;
+    tile.style.top = `${pctY}%`;
+
+    if (i === 0) {
+      tile.classList.add('start-tile');
+      tile.innerText = 'START';
+    } else if (i === 50) {
+      tile.classList.add('goal-tile');
+      tile.innerText = 'GOAL';
+    } else {
+      tile.innerText = i;
+    }
+    trackContainer.appendChild(tile);
+  }
+
+  updateTrackUI();
+}
+
+function updateTrackUI() {
+  for (let i = 0; i < 51; i++) {
+    const tile = document.getElementById(`tile-${i}`);
+    if (!tile) continue;
+
+    tile.classList.remove('active-green', 'active-yellow');
+
+    let isGreen = i < currentPosition;
+    let isYellow = (i === currentPosition && i > 0 && i < 50);
+
+    if (isGreen) {
+      tile.classList.add('active-green');
+    } else if (isYellow) {
+      tile.classList.add('active-yellow');
+    }
+  }
+}
+
+function formatTime(seconds) {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${s < 10 ? '0' : ''}${s}`;
+}
+
+function cleanupTouchState() {
+  if (touchClone) {
+    touchClone.remove();
+    touchClone = null;
+  }
+  if (draggedCard) {
+    draggedCard.style.opacity = '1';
+    draggedCard = null;
+  }
+  document.querySelectorAll('.touch-drag-clone').forEach(el => el.remove());
+}
+
+function startStage() {
+  cleanupTouchState();
+  clearInterval(timerInterval);
+  timer = 240;
+  selectedCard = null;
+  usedHintsInStage = [false, false, false, false, false];
+
+  isKatakanaMode = true;
+  document.getElementById('mode-display').innerText = isKatakanaMode ? "【カタカナ】" : "【ひらがな】";
+  document.getElementById('timer-display').innerText = `⏱ ${formatTime(timer)}`;
+  document.getElementById('stage-display').innerText = `🚩 ステージ ${currentStage}`;
+
+  const db = isKatakanaMode ? KATAKANA_DATABASE : HIRAGANA_DATABASE;
+  // ひらがな・カタカナ別に候補をシャッフルした袋を用意し、一巡するまで同じ言葉を出さない。
+  // 残りが5問未満なら、袋の残りを使い切ってから新しい袋を作り、必要数を補う。
+  const getQueue = () => isKatakanaMode ? katakanaQuestionQueue : hiraganaQuestionQueue;
+  const setQueue = queue => {
+    if (isKatakanaMode) katakanaQuestionQueue = queue;
+    else hiraganaQuestionQueue = queue;
+  };
+  const shuffleQuestions = items => {
+    const shuffled = [...items];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  };
+  currentIdioms = [];
+  let queue = getQueue();
+  while (currentIdioms.length < 5) {
+    if (queue.length === 0) queue = shuffleQuestions(db);
+    const next = queue.shift();
+    // 同じステージ内でも同じ言葉を重ねない
+    if (!currentIdioms.some(item => item.word === next.word)) currentIdioms.push(next);
+  }
+  setQueue(queue);
+
+  renderProblemRows();
+  renderCards();
+
+  triggerStageZoomIn(`ステージ ${currentStage}`, () => {
+    timerInterval = setInterval(() => {
+      timer--;
+      document.getElementById('timer-display').innerText = `⏱ ${formatTime(timer)}`;
+      if (timer <= 0) {
+        clearInterval(timerInterval);
+        handleTimeUp();
+      }
+    }, 1000);
+  });
+}
+
+function triggerStageZoomIn(text, onComplete) {
+  const overlay = document.getElementById('stage-zoom-overlay');
+  const zoomText = document.getElementById('stage-zoom-text');
+
+  zoomText.innerText = text;
+  zoomText.classList.remove('animate');
+  overlay.classList.add('show');
+
+  playSE('zoomIn');
+
+  setTimeout(() => {
+    zoomText.classList.add('animate');
+  }, 20);
+
+  setTimeout(() => {
+    overlay.classList.remove('show');
+    zoomText.classList.remove('animate');
+    if (onComplete) onComplete();
+  }, 1100);
+}
+
+function rollUpPoints(targetPoints, onComplete) {
+  const display = document.getElementById('points-display');
+  display.classList.add('rolling');
+
+  let currentVal = totalPoints;
+  const diff = targetPoints - totalPoints;
+  
+  if (diff <= 0) {
+    display.innerText = `⭐ ${targetPoints} pt`;
+    display.classList.remove('rolling');
+    totalPoints = targetPoints;
+    if (onComplete) onComplete();
+    return;
+  }
+
+  const steps = Math.min(30, diff);
+  const increment = diff / steps;
+  let stepCount = 0;
+
+  const interval = setInterval(() => {
+    stepCount++;
+    currentVal += increment;
+    const roundVal = Math.round(currentVal);
+    display.innerText = `⭐ ${roundVal} pt`;
+    playSE('rollup');
+
+    if (stepCount >= steps) {
+      clearInterval(interval);
+      totalPoints = targetPoints;
+      display.innerText = `⭐ ${totalPoints} pt`;
+      display.classList.remove('rolling');
+      if (onComplete) onComplete();
+    }
+  }, 35);
+}
+
+function renderProblemRows() {
+  const list = document.getElementById('idiom-list');
+  list.innerHTML = '';
+
+  currentIdioms.forEach((item, rowIndex) => {
+    const row = document.createElement('div');
+    row.className = 'idiom-row';
+
+    const meaning = document.createElement('div');
+    meaning.className = 'meaning-text';
+    meaning.innerText = item.meaning;
+
+    const slotsContainer = document.createElement('div');
+    slotsContainer.className = 'slots-container';
+
+    for (let c = 0; c < item.word.length; c++) {
+      const slot = document.createElement('div');
+      slot.className = 'drop-slot';
+      slot.dataset.rowIndex = rowIndex;
+      slot.dataset.slotIndex = c;
+      slot.ondragover = allowDrop;
+      slot.ondrop = dropToSlot;
+      slot.onclick = () => handleSlotClick(slot);
+      slotsContainer.appendChild(slot);
+    }
+
+    const hintBtn = document.createElement('button');
+    hintBtn.className = 'hint-btn';
+    hintBtn.innerText = 'ヒント';
+    hintBtn.onclick = (e) => {
+      e.stopPropagation();
+      showRowHint(rowIndex, hintBtn);
+    };
+
+    row.appendChild(meaning);
+    row.appendChild(slotsContainer);
+    row.appendChild(hintBtn);
+    list.appendChild(row);
+  });
+}
+
+function showRowHint(rowIndex, btn) {
+  if (usedHintsInStage[rowIndex]) return;
+  usedHintsInStage[rowIndex] = true;
+  btn.classList.add('used');
+  btn.innerText = 'ヒント✓';
+  btn.disabled = true;
+
+  const targetIdiom = currentIdioms[rowIndex];
+  const firstSlot = document.querySelector(`.drop-slot[data-row-index="${rowIndex}"][data-slot-index="0"]`);
+  
+  if (firstSlot && !firstSlot.querySelector('.hint-text')) {
+    const hintSpan = document.createElement('span');
+    hintSpan.className = 'hint-text';
+    hintSpan.innerText = targetIdiom.word[0];
+    firstSlot.appendChild(hintSpan);
+  }
+
+  playSE('click');
+}
+
+function returnCardToPool(card) {
+  if (!card) return;
+  const originalSlot = document.getElementById(card.dataset.poolSlotId);
+  if (originalSlot) {
+    originalSlot.appendChild(card);
+  } else {
+    document.getElementById('card-pool').appendChild(card);
+  }
+}
+
+function renderCards() {
+  cleanupTouchState();
+  const pool = document.getElementById('card-pool');
+  pool.innerHTML = '';
+
+  let allChars = [];
+  currentIdioms.forEach(item => {
+    item.word.split('').forEach(char => allChars.push(char));
+  });
+  allChars.sort(() => Math.random() - 0.5);
+
+  allChars.forEach((char, i) => {
+    const slot = document.createElement('div');
+    slot.className = 'pool-slot';
+    slot.id = `pool-slot-${i}`;
+
+    const card = document.createElement('div');
+    card.className = 'kanji-card';
+    card.innerText = char;
+    card.id = `card-${i}`;
+    card.dataset.poolSlotId = `pool-slot-${i}`;
+    card.draggable = true;
+
+    card.ondragstart = (e) => {
+      e.dataTransfer.setData('text', e.target.id);
+      selectCard(card);
+      playSE('click');
+    };
+
+    card.onclick = (e) => {
+      e.stopPropagation();
+      if (card.classList.contains('correct')) return;
+      selectCard(card);
+      playSE('click');
+    };
+
+    addTouchEvents(card);
+
+    slot.appendChild(card);
+    pool.appendChild(slot);
+  });
+}
+
+function addTouchEvents(card) {
+  const onTouchStart = (e) => {
+    if (card.classList.contains('correct')) return;
+    if (e.touches.length > 1) {
+      e.preventDefault();
+      cleanupTouchState();
+      return;
+    }
+    e.preventDefault();
+
+    cleanupTouchState();
+
+    const touch = e.touches[0];
+    draggedCard = card;
+    selectCard(card);
+    playSE('click');
+
+    const rect = card.getBoundingClientRect();
+    touchClone = card.cloneNode(true);
+    touchClone.classList.add('touch-drag-clone');
+    touchClone.style.position = 'fixed';
+    touchClone.style.left = `${rect.left}px`;
+    touchClone.style.top = `${rect.top}px`;
+    touchClone.style.width = `${rect.width}px`;
+    touchClone.style.height = `${rect.height}px`;
+    touchClone.style.zIndex = '1000';
+    touchClone.style.pointerEvents = 'none';
+    touchClone.style.boxShadow = '0 10px 25px rgba(0,0,0,0.2)';
+    touchClone.style.transform = 'scale(1.1)';
+    document.body.appendChild(touchClone);
+
+    touchStartX = touch.clientX - rect.left;
+    touchStartY = touch.clientY - rect.top;
+    card.style.opacity = '0.3';
+  };
+
+  const onTouchMove = (e) => {
+    if (!draggedCard || !touchClone) return;
+    e.preventDefault();
+    const touch = e.touches[0];
+    touchClone.style.left = `${touch.clientX - touchStartX}px`;
+    touchClone.style.top = `${touch.clientY - touchStartY}px`;
+  };
+
+  const onTouchEnd = (e) => {
+    if (!draggedCard) return;
+    const touch = e.changedTouches[0];
+    const currentCard = draggedCard;
+
+    cleanupTouchState();
+
+    const dropTarget = document.elementFromPoint(touch.clientX, touch.clientY);
+    if (dropTarget) {
+      const slot = dropTarget.closest('.drop-slot');
+      const pool = dropTarget.closest('#card-pool-container, #card-pool');
+
+      if (slot) {
+        handleSlotDrop(currentCard, slot);
+      } else if (pool) {
+        returnCardToPool(currentCard);
+        document.querySelectorAll('.drop-slot').forEach(s => {
+          if (!s.querySelector('.kanji-card')) s.classList.remove('filled');
+        });
+        selectCard(null);
+      }
+    }
+  };
+
+  const onTouchCancel = () => {
+    cleanupTouchState();
+  };
+
+  card.addEventListener('touchstart', onTouchStart, { passive: false });
+  card.addEventListener('touchmove', onTouchMove, { passive: false });
+  card.addEventListener('touchend', onTouchEnd);
+  card.addEventListener('touchcancel', onTouchCancel);
+}
+
+function handleSlotDrop(card, slot) {
+  const existingCard = slot.querySelector('.kanji-card');
+  if (existingCard && existingCard !== card) {
+    if (!existingCard.classList.contains('correct')) {
+      returnCardToPool(existingCard);
+    } else {
+      return;
+    }
+  }
+  slot.appendChild(card);
+  slot.classList.add('filled');
+  selectCard(null);
+  playSE('click');
+  checkRowCompletion(slot.dataset.rowIndex);
+}
+
+function selectCard(card) {
+  if (selectedCard) {
+    selectedCard.classList.remove('selected');
+  }
+  if (selectedCard === card) {
+    selectedCard = null;
+    return;
+  }
+  selectedCard = card;
+  if (card) {
+    card.classList.add('selected');
+  }
+}
+
+function handleSlotClick(slot) {
+  const existingCard = slot.querySelector('.kanji-card');
+  if (existingCard) {
+    if (!existingCard.classList.contains('correct')) {
+      returnCardToPool(existingCard);
+      slot.classList.remove('filled');
+      playSE('click');
+      if (selectedCard === existingCard) selectCard(null);
+    }
+  } else if (selectedCard) {
+    handleSlotDrop(selectedCard, slot);
+  }
+}
+
+function allowDrop(e) { e.preventDefault(); }
+
+function dropToSlot(e) {
+  e.preventDefault();
+  const cardId = e.dataTransfer.getData('text');
+  const card = document.getElementById(cardId);
+  const targetSlot = e.currentTarget;
+
+  if (!card) return;
+  handleSlotDrop(card, targetSlot);
+}
+
+function dropToPool(e) {
+  e.preventDefault();
+  const cardId = e.dataTransfer.getData('text');
+  const card = document.getElementById(cardId);
+  if (card) {
+    returnCardToPool(card);
+    document.querySelectorAll('.drop-slot').forEach(slot => {
+      if (!slot.querySelector('.kanji-card')) slot.classList.remove('filled');
+    });
+    selectCard(null);
+  }
+}
+
+function checkRowCompletion(rowIndex) {
+  const targetIdiom = currentIdioms[rowIndex];
+  const slots = document.querySelectorAll(`.drop-slot[data-row-index="${rowIndex}"]`);
+  let placedChars = '';
+
+  slots.forEach(slot => {
+    const card = slot.querySelector('.kanji-card');
+    if (card) {
+      placedChars += card.innerText;
+    }
+  });
+
+  if (placedChars.length === targetIdiom.word.length) {
+    if (placedChars === targetIdiom.word) {
+      playSE('correct');
+      slots.forEach(slot => {
+        const card = slot.querySelector('.kanji-card');
+        if (card) {
+          card.ondragstart = null;
+          card.onclick = null;
+          card.classList.remove('selected');
+          card.classList.add('correct');
+        }
+      });
+
+      const tilesToAdvance = usedHintsInStage[rowIndex] ? 1 : 2;
+      advancePosition(tilesToAdvance);
+      checkAllCompleted();
+    } else {
+      playSE('wrong');
+      setTimeout(() => {
+        slots.forEach(slot => {
+          const card = slot.querySelector('.kanji-card');
+          if (card && !card.classList.contains('correct')) {
+            returnCardToPool(card);
+            slot.classList.remove('filled');
+          }
+        });
+        penalizePosition(2);
+      }, 350);
+    }
+  }
+}
+
+function checkAllCompleted() {
+  const allRows = document.querySelectorAll('.idiom-row');
+  let completedCount = 0;
+  allRows.forEach(row => {
+    const slots = row.querySelectorAll('.drop-slot');
+    const isCorrect = Array.from(slots).every(s => {
+      const card = s.querySelector('.kanji-card');
+      return card && card.classList.contains('correct');
+    });
+    if (isCorrect) completedCount++;
+  });
+
+  if (completedCount === 5) {
+    playSE('milestone');
+    triggerConfetti();
+    
+    const remainingSec = Math.max(0, timer);
+    const stageGainedPoints = 50 + remainingSec;
+    const targetPoints = totalPoints + stageGainedPoints;
+
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+      <div class="stage-clear-banner">
+        <h2>🎉 5もん ぜんぶクリア！</h2>
+        <p style="margin-bottom: 4px;">⭐ クリア 50pt ＋ のこり${remainingSec}びょう (${remainingSec}pt) ＝ <strong>＋${stageGainedPoints}pt</strong> ゲット！</p>
+      </div>
+    `;
+    document.getElementById('game-container').appendChild(modal);
+
+    setTimeout(() => {
+      modal.remove();
+      currentStage++;
+      
+      rollUpPoints(targetPoints, () => {
+        checkSpecialStageOrNext();
+      });
+    }, 1800);
+  }
+}
+
+function checkSpecialStageOrNext() {
+  // 完走ボーナス／ゴール画面の流れが終わるまでは特別ボーナスを表示しない。
+  // 「つぎのステージへ」ボタンが押された後、ここに再度到達して表示する。
+  if (goalSequenceActive) return;
+  if (totalPoints >= nextSpecialStageMilestone) {
+    nextSpecialStageMilestone += 500;
+    startSpecialStage();
+  } else {
+    startStage();
+  }
+}
+
+async function advancePosition(count) {
+  for (let step = 0; step < count; step++) {
+    if (currentPosition >= 50) break;
+
+    const prevTile = document.getElementById(`tile-${currentPosition}`);
+    if (prevTile && currentPosition > 0) {
+      prevTile.classList.remove('active-yellow');
+      prevTile.classList.add('active-green');
+    }
+
+    currentPosition++;
+
+    const currTile = document.getElementById(`tile-${currentPosition}`);
+    if (currTile) {
+      if (currentPosition < 50) {
+        currTile.classList.add('active-yellow');
+      } else {
+        currTile.classList.add('active-green');
+      }
+      currTile.classList.remove('tile-pop');
+      void currTile.offsetWidth;
+      currTile.classList.add('tile-pop');
+    }
+
+    playSE('click');
+    await new Promise(resolve => setTimeout(resolve, 380));
+  }
+
+  updateTrackUI();
+
+  if (currentPosition >= 50) {
+    currentPosition = 50;
+    goalSequenceActive = true;
+    clearInterval(timerInterval);
+    
+    triggerGoalOrbitAnimation(() => {
+      showGoalBonusBanner(() => {
+        showGoalModal();
+      });
+    });
+  }
+}
+
+async function penalizePosition(count) {
+  for (let step = 0; step < count; step++) {
+    if (currentPosition <= 0) break;
+
+    const currTile = document.getElementById(`tile-${currentPosition}`);
+    if (currTile) {
+      currTile.classList.remove('active-yellow', 'active-green', 'tile-pop');
+    }
+
+    currentPosition--;
+
+    const prevTile = document.getElementById(`tile-${currentPosition}`);
+    if (prevTile && currentPosition > 0) {
+      prevTile.classList.remove('active-green');
+      prevTile.classList.add('active-yellow');
+      prevTile.classList.remove('tile-pop');
+      void prevTile.offsetWidth;
+      prevTile.classList.add('tile-pop');
+    }
+
+    await new Promise(resolve => setTimeout(resolve, 250));
+  }
+
+  updateTrackUI();
+}
+
+function showGoalBonusBanner(onComplete) {
+  playSE('fanfare');
+  triggerConfetti();
+
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  modal.innerHTML = `
+    <div class="bonus-banner">
+      <h2>🎁 かんそうボーナス！</h2>
+      <p style="font-size: 16px; color: #fef3c7;">50マス 1しゅう たっせい！</p>
+      <div class="bonus-amount">+100 BONUS PT</div>
+    </div>
+  `;
+  document.getElementById('game-container').appendChild(modal);
+
+  const targetPoints = totalPoints + 100;
+
+  setTimeout(() => {
+    rollUpPoints(targetPoints, () => {
+      setTimeout(() => {
+        modal.remove();
+        if (onComplete) onComplete();
+      }, 500);
+    });
+  }, 1000);
+}
+
+function triggerGoalOrbitAnimation(onComplete) {
+  playSE('goal');
+  triggerConfetti();
+
+  let lapCount = 0;
+  let currentIndex = 0;
+  const totalTiles = 51;
+
+  const orbitInterval = setInterval(() => {
+    document.querySelectorAll('.track-tile').forEach(t => t.classList.remove('active-orbit'));
+
+    const tile = document.getElementById(`tile-${currentIndex}`);
+    if (tile) {
+      tile.classList.add('active-orbit');
+      playSE('orbit');
+    }
+
+    currentIndex++;
+    if (currentIndex >= totalTiles) {
+      currentIndex = 0;
+      lapCount++;
+    }
+
+    if (lapCount >= 2) {
+      clearInterval(orbitInterval);
+      document.querySelectorAll('.track-tile').forEach(t => t.classList.remove('active-orbit'));
+      if (onComplete) onComplete();
+    }
+  }, 30);
+}
+
+function showGoalModal() {
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  modal.innerHTML = `
+    <div class="modal-card">
+      <h2 class="win">🏆 ゴールたっせい！</h2>
+      <p>おめでとう！50マス かんそう！<br>いまの ポイント: <strong>${totalPoints} pt</strong></p>
+      <div class="modal-btns">
+        <button class="btn btn-next" onclick="nextStageFromGoal(this)">つぎの ステージへ</button>
+      </div>
+    </div>
+  `;
+  document.getElementById('game-container').appendChild(modal);
+}
+
+function nextStageFromGoal(btn) {
+  cleanupTouchState();
+  btn.closest('.modal-overlay').remove();
+  currentPosition = 0;
+  goalSequenceActive = false;
+  updateTrackUI();
+  checkSpecialStageOrNext();
+}
+
+/* 特別ボーナスステージの60秒タイマー */
+function startSpecialCountdown(modal, getProgress) {
+  const container = modal.querySelector('.special-stage-container');
+  const timerLabel = document.createElement('div');
+  timerLabel.style.cssText = 'font-size:18px;font-weight:900;color:#dc2626;background:#fff;border:2px solid #fecaca;border-radius:12px;padding:6px 16px;';
+  timerLabel.textContent = '⏱ のこり 1:00';
+  container.insertBefore(timerLabel, container.querySelector('.special-grid-8x8, .gojyuon-container'));
+  let remaining = 60;
+  modal._specialRemaining = remaining;
+  modal._specialTimer = setInterval(() => {
+    remaining--;
+    modal._specialRemaining = Math.max(0, remaining);
+    timerLabel.textContent = `⏱ のこり ${Math.floor(Math.max(0, remaining) / 60)}:${String(Math.max(0, remaining) % 60).padStart(2, '0')}`;
+    if (remaining <= 0) {
+      clearInterval(modal._specialTimer);
+      const correctCount = Math.max(0, getProgress());
+      const earned = correctCount * 10; // 正解1つにつき10pt。時間切れ時は残り時間ptは0
+      modal.remove();
+      const result = document.createElement('div');
+      result.className = 'modal-overlay';
+      result.innerHTML = `<div class="modal-card"><h2 class="win">⏱ タイムアップ！</h2><p>せいかい：${correctCount} こ × 10 pt</p><p>のこり時間：0 秒 × 1 pt</p><p style="font-size:24px;font-weight:900;margin:16px 0;">⭐ ${earned} pt ゲット！</p><p>もとのゲームにもどります。</p></div>`;
+      document.getElementById('game-container').appendChild(result);
+      rollUpPoints(totalPoints + earned, () => {
+        setTimeout(() => { result.remove(); startStage(); }, 1200);
+      });
+    }
+  }, 1000);
+}
+
+function finishSpecialStage(modal, correctCount) {
+  clearInterval(modal._specialTimer);
+  const remainingSeconds = Math.max(0, modal._specialRemaining || 0);
+  const earned = correctCount * 10 + remainingSeconds + 150; // 正解pt＋残り時間pt＋従来のクリアボーナス
+  playSE('milestone');
+  triggerConfetti();
+  modal.remove();
+  const result = document.createElement('div');
+  result.className = 'modal-overlay';
+  result.innerHTML = `<div class="modal-card"><h2 class="win">🎉 クリア！</h2><p>せいかい：${correctCount} こ × 10 pt</p><p>のこり時間：${remainingSeconds} 秒 × 1 pt</p><p>クリアボーナス：150 pt</p><p style="font-size:24px;font-weight:900;margin:16px 0;">⭐ ${earned} pt ゲット！</p></div>`;
+  document.getElementById('game-container').appendChild(result);
+  rollUpPoints(totalPoints + earned, () => {
+    setTimeout(() => { result.remove(); startStage(); }, 1200);
+  });
+}
+
+/* 特別ボーナスステージ */
+function startSpecialStage() {
+  cleanupTouchState();
+  const isTypeWordSearch = Math.random() < 0.5;
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+
+  if (isTypeWordSearch) {
+    const themeObj = WORD_SEARCH_THEMES[Math.floor(Math.random() * WORD_SEARCH_THEMES.length)];
+    const words = themeObj.words.slice(0, 5);
+    const size = 8;
+    const cells = Array(size * size).fill(null);
+    const directions = [[0,1],[1,0],[1,1],[1,-1]]; // 横・縦・斜め
+    const placedWords = [];
+    const rand = n => Math.floor(Math.random() * n);
+
+    // 各単語を、横・縦・斜めのいずれかの一直線上に配置する。
+    words.sort((a,b) => b.length-a.length);
+    for (const word of words) {
+      const chars = [...word];
+      let placed = false;
+      for (let attempt = 0; attempt < 250 && !placed; attempt++) {
+        const [dr,dc] = directions[rand(directions.length)];
+        const r = rand(size), c = rand(size);
+        const er = r + dr * (chars.length - 1), ec = c + dc * (chars.length - 1);
+        if (er < 0 || er >= size || ec < 0 || ec >= size) continue;
+        const indexes = chars.map((_,i) => (r + dr*i)*size + (c + dc*i));
+        if (indexes.every((idx,i) => cells[idx] === null || cells[idx] === chars[i])) {
+          indexes.forEach((idx,i) => { cells[idx] = chars[i]; });
+          placedWords.push({word, indexes, found:false});
+          placed = true;
+        }
+      }
+      // 配置が難しい場合は単語数を減らす（文字をばらばらに配置することはしない）。
+    }
+
+    const dummyChars = [...'あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわん'];
+    for (let i=0;i<cells.length;i++) if (cells[i] === null) cells[i] = dummyChars[rand(dummyChars.length)];
+
+    modal.innerHTML = `
+      <div class="special-stage-container">
+        <div class="special-header">
+          <div class="special-title">⭐ かくれんぼ ことばさがし ⭐</div>
+          <div>テーマ：【 ${themeObj.theme} 】</div>
+        </div>
+        <p style="font-size:14px;color:#713f12;margin:0;text-align:center;">ことばを見つけたら、はじめの文字から順番にタップしよう！</p>
+        <div id="special-word-list" style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;"></div>
+        <div class="special-grid-8x8" id="special-grid"></div>
+        <p style="font-size:12px;color:#713f12;margin:0;">ことばは 横・縦・ななめ の一直線にかくれているよ。</p>
+      </div>`;
+    document.getElementById('game-container').appendChild(modal);
+    const grid = modal.querySelector('#special-grid');
+    const wordList = modal.querySelector('#special-word-list');
+    const wordBadges = new Map();
+    placedWords.forEach(item => {
+      const badge = document.createElement('div');
+      badge.textContent = item.word;
+      badge.style.cssText = 'background:#fff;border:2px solid #facc15;border-radius:8px;padding:4px 8px;font-weight:900;color:#713f12;';
+      wordList.appendChild(badge);
+      wordBadges.set(item.word, badge);
+    });
+
+    let found = 0;
+    let selected = [];
+    const buttons = [];
+    startSpecialCountdown(modal, () => found);
+    playSE('fanfare');
+
+    cells.forEach((char, idx) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'special-panel';
+      btn.textContent = char;
+      btn.dataset.index = String(idx);
+      btn.style.padding = '0';
+      btn.onclick = () => {
+        if (btn.classList.contains('hit')) return;
+        selected.push(idx);
+        btn.classList.add('hit');
+        const matches = placedWords.filter(item => !item.found && item.indexes.length === selected.length && item.indexes.every((v,i) => v === selected[i]));
+        if (matches.length) {
+          const item = matches[0];
+          item.found = true;
+          found++;
+          const badge = wordBadges.get(item.word);
+          if (badge) { badge.style.background = '#bbf7d0'; badge.style.borderColor = '#16a34a'; badge.style.textDecoration = 'line-through'; }
+          playSE('correct');
+          selected = [];
+          if (found >= placedWords.length) finishSpecialStage(modal, found);
+          return;
+        }
+        const stillPossible = placedWords.some(item => !item.found && item.indexes.length > selected.length && item.indexes.slice(0,selected.length).every((v,i) => v === selected[i]));
+        if (stillPossible) {
+          playSE('correct');
+        } else {
+          selected.forEach(selectedIdx => { if (buttons[selectedIdx]) buttons[selectedIdx].classList.remove('hit'); });
+          selected = [];
+          playSE('wrong');
+        }
+      };
+      buttons.push(btn);
+      grid.appendChild(btn);
+    });
+  } else {
+    /* もじさがし：ひらがな／カタカナの3つの行、合計15文字を順番に探す */
+    const hiraRows = ['あいうえお','かきくけこ','さしすせそ','たちつてと','なにぬねの','はひふへほ','まみむめも','らりるれろ'];
+    const kataRows = ['アイウエオ','カキクケコ','サシスセソ','タチツテト','ナニヌネノ','ハヒフヘホ','マミムメモ','ラリルレロ'];
+    const useKata = Math.random() < 0.5;
+    const availableRows = useKata ? kataRows : hiraRows;
+    const selectedRows = [...availableRows].sort(() => Math.random() - 0.5).slice(0, 3);
+    const targetSeq = [...selectedRows.join('')];
+    const allChars = [...availableRows.join('')];
+    const dummyPool = allChars.filter(ch => !targetSeq.includes(ch));
+    const cards = [...targetSeq, ...Array.from({length:9}, () => dummyPool[Math.floor(Math.random()*dummyPool.length)])];
+    // 15文字の正解パネルと9枚のダミーをランダムに並べる。
+    for (let i=cards.length-1;i>0;i--) { const j=Math.floor(Math.random()*(i+1)); [cards[i],cards[j]]=[cards[j],cards[i]]; }
+    let currentIndex = 0;
+    modal.innerHTML = `
+      <div class="special-stage-container">
+        <div class="special-header"><div class="special-title">⭐ じゅんばん もじさがし ⭐</div></div>
+        <p style="font-size:15px;color:#713f12;font-weight:900;margin:0;text-align:center;">3つの行、15文字をじゅんばんにタップしよう！</p>
+        <div id="kana-target" style="font-size:22px;line-height:1.65;letter-spacing:3px;font-weight:900;color:#0369a1;background:#fff;border:2px solid #7dd3fc;border-radius:12px;padding:8px 12px;text-align:center;"></div>
+        <div class="gojyuon-container" id="gojyuon-box"></div>
+      </div>`;
+    document.getElementById('game-container').appendChild(modal);
+    const box = modal.querySelector('#gojyuon-box');
+    const target = modal.querySelector('#kana-target');
+    const renderTarget = () => {
+      target.innerHTML = '';
+      for (let r=0; r<3; r++) {
+        const line = document.createElement('div');
+        line.textContent = targetSeq.slice(r*5, r*5+5).map((ch,i) => (r*5+i) < currentIndex ? '✓' : ch).join(' ');
+        target.appendChild(line);
+      }
+    };
+    renderTarget();
+    startSpecialCountdown(modal, () => currentIndex);
+    playSE('fanfare');
+    cards.forEach(char => {
+      const card = document.createElement('button');
+      card.type = 'button';
+      card.className = 'gojyuon-card';
+      card.textContent = char;
+      card.style.padding = '0';
+      card.onclick = () => {
+        if (card.classList.contains('cleared')) return;
+        if (char === targetSeq[currentIndex]) {
+          card.classList.add('cleared');
+          currentIndex++;
+          renderTarget();
+          playSE('correct');
+          if (currentIndex >= targetSeq.length) finishSpecialStage(modal, currentIndex);
+        } else {
+          playSE('wrong');
+          card.animate([{transform:'translateX(0)'},{transform:'translateX(-5px)'},{transform:'translateX(5px)'},{transform:'translateX(0)'}],{duration:180});
+        }
+      };
+      box.appendChild(card);
+    });
+  }
+}
+
+function randIndex(max) { return Math.floor(Math.random() * max); }
+
+function handleTimeUp() {
+  playSE('timeup');
+  penalizePosition(5);
+
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  modal.innerHTML = `
+    <div class="modal-card">
+      <h2>⏰ タイムアップ！</h2>
+      <p>じかんが きれました！マスが 5つ もどります。</p>
+      <div class="modal-btns">
+        <button class="btn btn-retry" onclick="retryStage(this)">もういちど ちょうせん</button>
+        <button class="btn btn-quit" onclick="resetGame(this)">さいしょから</button>
+      </div>
+    </div>
+  `;
+  document.getElementById('game-container').appendChild(modal);
+}
+
+function retryStage(btn) {
+  cleanupTouchState();
+  btn.closest('.modal-overlay').remove();
+  startStage();
+}
+
+function resetGame(btn) {
+  cleanupTouchState();
+  btn.closest('.modal-overlay').remove();
+  currentPosition = 0;
+  currentStage = 1;
+  totalPoints = 0;
+  nextSpecialStageMilestone = 500;
+  goalSequenceActive = false;
+  updateTrackUI();
+  showStartModal();
+}
+
+function showStartModal() {
+  cleanupTouchState();
+  const existingModal = document.getElementById('start-modal');
+  if (existingModal) existingModal.remove();
+
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  modal.id = 'start-modal';
+  modal.innerHTML = `
+    <div class="start-hero-card">
+      <h1 class="start-hero-title">ことばパズル</h1>
+      <p style="font-size: 15px; margin-bottom: 20px; line-height: 1.6;">
+        ひらがな と かたかな の カードを えらんで<br>
+        いみにあう ことばを かんせいさせよう！<br>
+        50マスの ゴールを めざそう！
+      </p>
+      <button class="start-play-btn" onclick="startGameFromModal(this)">ゲーム スタート</button>
+    </div>
+  `;
+  document.getElementById('game-container').appendChild(modal);
+}
+
+function startGameFromModal(btn) {
+  initAudio();
+  const modal = btn.closest('.modal-overlay');
+  if (modal) modal.remove();
+  startStage();
+}
+
+function initAudio() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+}
+
+function toggleSound() {
+  soundEnabled = !soundEnabled;
+  const btn = document.getElementById('sound-btn');
+  if (btn) {
+    btn.innerText = soundEnabled ? '🔊 ON' : '🔇 OFF';
+  }
+}
+
+/* 2年生版と同等の完全な効果音生成ロジック */
+function playSE(type) {
+  if (!soundEnabled) return;
+  initAudio();
+  if (!audioCtx) return;
+
+  const now = audioCtx.currentTime;
+
+  try {
+    if (type === 'click') {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(600, now);
+      osc.frequency.exponentialRampToValueAtTime(800, now + 0.05);
+      gain.gain.setValueAtTime(0.15, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(now);
+      osc.stop(now + 0.05);
+    } else if (type === 'correct') {
+      const notes = [523.25, 659.25, 783.99, 1046.50];
+      notes.forEach((freq, idx) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+        gain.gain.setValueAtTime(0.2, now + idx * 0.08);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + idx * 0.08 + 0.2);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now + idx * 0.08);
+        osc.stop(now + idx * 0.08 + 0.2);
+      });
+    } else if (type === 'wrong') {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(180, now);
+      osc.frequency.linearRampToValueAtTime(120, now + 0.25);
+      gain.gain.setValueAtTime(0.25, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(now);
+      osc.stop(now + 0.25);
+    } else if (type === 'zoomIn') {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(300, now);
+      osc.frequency.exponentialRampToValueAtTime(900, now + 0.3);
+      gain.gain.setValueAtTime(0.2, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(now);
+      osc.stop(now + 0.3);
+    } else if (type === 'rollup') {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(800 + Math.random() * 200, now);
+      gain.gain.setValueAtTime(0.05, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(now);
+      osc.stop(now + 0.03);
+    } else if (type === 'milestone' || type === 'fanfare') {
+      const notes = [523.25, 659.25, 783.99, 1046.50, 1318.51];
+      notes.forEach((freq, idx) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, now + idx * 0.1);
+        gain.gain.setValueAtTime(0.25, now + idx * 0.1);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + idx * 0.1 + 0.4);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now + idx * 0.1);
+        osc.stop(now + idx * 0.1 + 0.4);
+      });
+    } else if (type === 'orbit' || type === 'goal') {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(400 + Math.random() * 600, now);
+      gain.gain.setValueAtTime(0.08, now);
+      gain.gain.exponentialRampToValueAtTime(0.005, now + 0.05);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(now);
+      osc.stop(now + 0.05);
+    } else if (type === 'timeup') {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(250, now);
+      osc.frequency.linearRampToValueAtTime(100, now + 0.5);
+      gain.gain.setValueAtTime(0.2, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(now);
+      osc.stop(now + 0.5);
+    }
+  } catch (e) {
+    // Web Audio エラーの自動無効化
+  }
+}
+
+function triggerConfetti() {
+  const canvas = document.getElementById('confetti-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  
+  canvas.width = canvas.parentElement.clientWidth;
+  canvas.height = canvas.parentElement.clientHeight;
+
+  const particles = [];
+  const colors = ['#f43f5e', '#38bdf8', '#a855f7', '#4ade80', '#facc15', '#fb923c'];
+
+  for (let i = 0; i < 70; i++) {
+    particles.push({
+      x: canvas.width / 2,
+      y: canvas.height / 2,
+      vx: (Math.random() - 0.5) * 14,
+      vy: (Math.random() - 0.7) * 14,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      size: Math.random() * 8 + 4,
+      rotation: Math.random() * 360,
+      rSpeed: (Math.random() - 0.5) * 10
+    });
+  }
+
+  let duration = 0;
+  function animate() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    particles.forEach(p => {
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vy += 0.25;
+      p.rotation += p.rSpeed;
+
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate((p.rotation * Math.PI) / 180);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+      ctx.restore();
+    });
+
+    duration++;
+    if (duration < 90) {
+      requestAnimationFrame(animate);
+    } else {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+  }
+  animate();
+}
+
+window.addEventListener('load', () => {
+  initTrack();
+  showStartModal();
+});
+
+window.addEventListener('resize', () => {
+  initTrack();
+});
+</script>
+</body>
+</html>
